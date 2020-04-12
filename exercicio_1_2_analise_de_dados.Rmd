@@ -1,0 +1,533 @@
+---
+title: "Introdução à Ciência de Dados e Decisão"
+author: "Monalisa Conceição Silva"
+date: "4/13/2020"
+output: html_notebook
+---
+
+I) Objetivo:
+  Explorar e aplicar os conhecimentos obtidos nas aulas expostas sobre Análise exploratória de dados com a linguagem R.
+  
+II)Parte 1 
+
+Exercicío 1
+```{r}
+library(readr)
+library(janitor)
+library(ggplot2)
+
+caminho <- paste0("C:/Users/monal/Downloads/Curso Ciencias de Dados/us_change.rda")
+
+dados <- load(caminho)
+
+us_change <- janitor::clean_names(us_change) %>% 
+  tibble::as_tibble()
+
+#ver o começo do DataSet
+head(us_change)
+
+#verdetalhes do Dataset
+str(us_change)
+
+#primeiro tem que filtrar em dois: 1 para maior que 2000 e 2 para menor que 2000
+
+data_filter_1 <- us_change %>%
+  dplyr::select("quarter","unemployment") %>% 
+  dplyr::filter(quarter >= "2000-01-01")
+
+data_filter_2 <- us_change %>% 
+  dplyr::select("quarter","unemployment") %>% 
+  dplyr::filter(quarter < "2000-01-01")
+
+#transformar o primeiro
+data.nivel1 <- data_filter_1
+
+data.nivel1$unemployment[1] <-  100; 
+for(i in 2:length(data.nivel1$unemployment)){
+  data.nivel1$unemployment[i] <-  (1 + data_filter_1$unemployment[i]/100) * data.nivel1$unemployment[i-1]
+}
+
+#salvar o primeiro valor
+start <- data.nivel1$unemployment[1]
+
+#transformar o segundo
+data.nivel2 <- data_filter_2
+
+data.nivel2$unemployment[1] <- (1 + data.nivel2$unemployment[1]/100)* start
+for(i in 2:length(data.nivel2$unemployment)){
+  data.nivel2$unemployment[i] <-  (1 + data_filter_2$unemployment[i]/100) * data.nivel2$unemployment[i-1]
+}
+
+#Agora juntando os datas set
+data <- data.nivel2 %>% 
+  dplyr::full_join(data.nivel1) %>% 
+  tibble::as_tibble()
+
+#Agora criando um novo dataset com a data as colunas novas
+us_change_nivel <- us_change %>% 
+  dplyr::mutate(quarter = data$quarter,
+                unemployment = data$unemployment)
+
+```
+
+Letra B
+```{r}
+
+correl <-  cor(us_change %>% 
+      select(-"quarter")) %>% round(2) 
+
+print(correl)
+
+corrplot::corrplot(correl, 
+                   type = "upper",
+                   tl.col = "black",
+                   )
+```
+```{r}
+correl1 <- cor(us_change_nivel %>% dplyr::select(-"quarter")) %>% round(2)
+
+print(correl1)
+
+corrplot::corrplot(correl1, 
+                   type = "upper",
+                   tl.col = "black",
+                   )
+
+```
+
+Sim, apresentam diferenças porque no primeiro temos o valor "unemployment" em taxa de variação e os outros dados em números, "atrapalhando" a correlação entre os valores e alterando a análise. No segundo, temos todas as colunas na mesma unidade, logo a análise fica confiável.
+
+Letra C
+```{r}
+
+grafico_data <- data %>% 
+  ggplot(aes(x = quarter, y = unemployment)) +
+  geom_line() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(title = "Evolução do desemprego",
+       y = "Quantidade",
+       x = "Anos",
+       colour = "quarter",
+       caption = "Gapminder")
+
+  plotly::ggplotly(grafico_data)
+
+```
+
+
+
+
+#Gráfico 1 
+```{r}
+
+grafico_data1 <- data %>% 
+  dplyr::filter(unemployment == max(unemployment)) %>% 
+  ggplot(aes(x = quarter, y = unemployment)) +
+  geom_point() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(title = "Maior taxa de desemprego",
+       y = "Quantidade",
+       x = "Anos",
+       colour = "quarter",
+       caption = "Gapminder")
+  
+  plotly::ggplotly(grafico_data1)
+
+
+```
+
+
+
+#Gráfico 2
+```{r}
+grafico_data2 <- data %>% 
+  ggplot(aes(x = unemployment)) +
+  geom_histogram() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(title = "Evolução do Numero de Indice de desemprego",
+       y = "Quantidade",
+       x = "Número Indice",
+       colour = "quarter",
+       caption = "Gapminder")
+  
+  plotly::ggplotly(grafico_data2)
+
+```
+
+
+#Gráfico 3
+```{r}
+
+grafico_data3 <- us_change %>% 
+  ggplot(aes(x = quarter, y=unemployment)) +
+  geom_line() +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(title = "Evolução da Taxa de desemprego",
+       y = "Quantidade",
+       x = "Anos",
+       colour = "quarter",
+       caption = "Gapminder")
+  
+  plotly::ggplotly(grafico_data3)
+
+```
+
+
+Letra D
+
+Observando os gráficos é possível visualizar a alta variação existe ao longo dos anos. 
+Observa-se que houve uma máxima taxa de desemprego no gráfico 4, em outubro.
+Existe uma grande taxa de variação como demonstra o gráfico de variação. Bem como também tem-se grande variação no número índice.
+No histograma tem-se a quantidade de desemprego por número índice ao longo dos anos.
+
+Letra E
+
+Sim, várias mudanças brucas ao longo do tempo. Temos o periodo de 1980 até 2000, onde o indice de desemprego foi maior registrado e próximo do ano 2000 tem-se o menor índice.
+
+
+Exercício 2
+
+Letra A - O cuidado adicional inserido na importação do arquivo Retail.xlsx foi o (ship=1) para pular uma linha,porque a planilha do Excel possui duas linhas de cabeçalho.
+
+```{r}
+
+dados_2 <- readxl::read_excel(path = "C:/Users/monal/Downloads/Curso Ciencias de Dados/retail.xlsx",skip=1) %>% 
+  janitor::clean_names() %>%
+  tibble::as_tibble()
+
+
+```
+
+Letra B - Para transformar o tipo POSIXct na coluna Series_id utilizou-se a biblioteca "lubridate" com a função (as.date())
+```{r}
+
+dados_2 <- dados_2 %>% 
+  dplyr::mutate(
+    series_id = lubridate::as_date(series_id)
+  )
+
+```
+
+Letra C e D -  Essa questão foram feitas juntas de forma a observar a sazonalidade e a têndencia bem como também o outlier ou padrões anômalos. Decompondo pela série utilizando o método X11, observou-se datas especificas de picos de vendas analisada no data set importado.
+
+```{r}
+  
+dados2.ts <- dados_2 %>% 
+  dplyr::select(c("a3349335t")) %>% 
+  ts(
+    start = c(
+      lubridate::year(dplyr::first(dados_2$series_id)),
+      lubridate::month(dplyr::first(dados_2$series_id))),
+    
+    end = c(
+      lubridate::year(dplyr::last(dados_2$series_id)), 
+      lubridate::month(dplyr::last(dados_2$series_id))),
+    
+    frequency = 12
+  ) %>% 
+  .[,1]
+
+grafico_1 <- autoplot(dados2.ts) + ggtitle("A3349335T") + 
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  xlab("Anos") +
+  ylab("Total de vendas por Dolar$'000s")
+  
+grafico_2 <- ggseasonplot(dados2.ts, year.labels=TRUE, year.labels.left=TRUE) +
+  theme(plot.title = element_text(hjust = 0.5)) +  
+  ylab("Total de vendas em dolar$'000s por Ano") +
+  ggtitle("Evolução por estação : A3349335T")
+  
+grafico_3 <- ggmonthplot(dados2.ts) +
+  theme(plot.title = element_text(hjust = 0.5)) + 
+  ylab("Total de vendas em dolar$'000s") +
+  ggtitle("Evolução por Mês: A3349335T")
+    
+dados2ts2 <- window(dados2.ts, start=1982)
+
+grafico_4 <- gglagplot(dados2ts2) + 
+  ggtitle("Venda mensal") +
+  theme(plot.title = element_text(hjust = 0.5))
+  
+
+decomposicao <- stl(dados2.ts, s.window = "periodic", robust = TRUE)  %>%
+  pluck("time.series") %>% 
+  as_tibble() %>% 
+  mutate(
+    date = seq(from = lubridate::as_date(dplyr::first(dados_2$series_id)),
+               to = lubridate::as_date(dplyr::last(dados_2$series_id)),
+               by = "months")
+  ) %>% 
+  pivot_longer(
+    cols = -"date",
+    names_to = "decomposition",
+    values_to = "valores"
+  )
+ 
+  
+grafico_5 <- decomposicao %>% 
+  filter(decomposition == "seasonal") %>% 
+  ggplot(aes(x = date, y = valores)) + 
+  theme(plot.title = element_text(hjust = 0.5)) +
+  geom_line()+ 
+  labs(title = "Sazonalidade",
+       y = "Quantidade",
+       x = "Anos",
+       caption = "Gapminder")
+
+grafico_6 <-  decomposicao %>% 
+  filter(decomposition == "trend")  %>% 
+  ggplot(aes(x = date, y = valores)) + 
+  theme(plot.title = element_text(hjust = 0.5)) +
+  geom_line() + 
+  labs(title = "Tendência",
+       y = "Quantidade",
+       x = "Anos",
+       caption = "Gapminder")
+  
+outlier <- dados_2 %>% 
+  anomalize::time_decompose("a3349335t") %>%
+  anomalize::anomalize(remainder) %>%
+  anomalize::time_recompose() %>% 
+  dplyr::filter(anomaly == "Yes") %>% 
+  dplyr::select(series_id) 
+
+```
+
+
+#Analise dos Dados
+```{r}
+plotly::ggplotly(grafico_1)
+```
+#GGseasonplot
+```{r}
+plotly::ggplotly(grafico_2)
+```
+#ggmonthplot
+```{r}
+plotly::ggplotly(grafico_3)
+```
+#Exploração dos dados
+```{r}
+plotly::ggplotly(grafico_4)
+```
+#Sazonalidade
+```{r}
+plotly::ggplotly(grafico_5)
+```
+#Tendencia
+```{r}
+plotly::ggplotly(grafico_6)
+```
+
+```{r}
+outlier
+```
+
+
+Parte - 2
+
+Exercício 1 - Spotify
+```{r}
+library(gapminder)
+library(tidyverse)
+library(janitor)
+
+
+songs <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2020/2020-01-21/spotify_songs.csv')
+
+songs<- songs %>% 
+  janitor::clean_names() %>% 
+  tibble::as_tibble()
+
+
+#Analisando dos dados
+
+data_songs_artist <- songs %>% 
+  dplyr::select("energy","track_popularity","track_artist","track_album_release_date")
+
+
+grafic_1 <- data_songs_artist %>% 
+  dplyr::filter(track_popularity > 90) %>% 
+  dplyr::filter(track_album_release_date >= "2019-06-01") %>% 
+  ggplot(aes(x = track_album_release_date, y = track_popularity)) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  geom_point() +
+  labs(title = "Popularidade (maior 90) entre os artistas ", 
+       subtitle = "Por data",
+       y = "Popularidade",
+       x = "Data",
+       colour = "track_artist",
+       caption = "Gapminder")
+  
+
+grafic_2 <- data_songs_artist %>% 
+  dplyr::filter(track_popularity > 90) %>% 
+  dplyr::filter(energy > 0.7) %>% 
+  ggplot(aes(x = energy, y=track_popularity)) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  geom_line() +
+  labs(title = "Popularidade (maior 90) entre os artistas ", 
+       subtitle = "Por energia (maior 0.7)",
+       y = "Popularidade",
+       x = "Energy",
+       colour = "track_artist",
+       caption = "Gapminder")
+  
+grafic_3 <- data_songs_artist %>% 
+  dplyr::filter(energy == max(energy)) %>% 
+  ggplot(aes(x = track_popularity, y = energy)) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  geom_point() +
+  labs(title = "Maior Energy ", 
+       subtitle = "Por energia",
+       y = "Energy",
+       x = "Popularidade",
+       colour = "track_artist",
+       caption = "Gapminder")
+  
+grafic_4 <- data_songs_artist %>% 
+  ggplot() +
+  geom_histogram(aes(energy)) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(title = "Quantidade de musica", 
+       subtitle = "Por energia",
+       y = "Count music",
+       x = "Energy",
+       caption = "Gapminder")
+
+songs <- songs %>% 
+  dplyr::mutate(track_album_release_date = lubridate::as_date(track_album_release_date))
+  
+
+data_songs <- songs %>% 
+  dplyr::select("track_popularity","track_album_release_date",
+                "track_album_name")
+
+grafic_5 <- data_songs %>% 
+  dplyr::filter(track_popularity > 80) %>% 
+  ggplot(aes(x = track_album_release_date, y= track_popularity)) +
+  geom_line()+
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(title = "Popularidade entre os artistas ", 
+       subtitle = "Por data de lançamento",
+       y = "Popularidade",
+       x = "Data de Lançamento",
+       colour = "track_album_name",
+       caption = "Gapminder")
+
+```
+
+#Analise 1- Spotify
+```{r}
+plotly::ggplotly(grafic_1)
+```
+
+#Analise 2 -Spotify
+```{r}
+plotly::ggplotly(grafic_2)
+```
+
+#Analise 3 -Spotify
+```{r}
+plotly::ggplotly(grafic_3)
+```
+#Analise 4 -Spotify
+```{r}
+plotly::ggplotly(grafic_4)
+```
+#Analise 5 - Spotify
+```{r}
+plotly::ggplotly(grafic_5)
+```
+
+
+Exercício 2 - Video Games
+```{r}
+library(tidyverse)
+library(lubridate)
+
+#importanto o DataFrame
+video_games <- readr::read_csv("https://raw.githubusercontent.com/rfordatascience/tidytuesday/master/data/2019/2019-07-30/video_games.csv")
+
+head(video_games)
+
+video_games <- video_games %>% 
+  janitor::clean_names() %>% 
+  dplyr::mutate(
+    release_date = mdy(release_date)
+  )
+
+
+data_filter_price <- video_games %>% 
+  dplyr::select("release_date","price") %>% 
+  dplyr::filter(price < 0.99)
+
+graf_1 <- data_filter_price %>% 
+  ggplot() +
+  geom_line(aes(x = price, y = release_date)) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(title = "Comparação dos preços dos jogos ", 
+       subtitle = "Por data",
+       y = "Preço (< 0,99)",
+       x = "Ano",
+       colour = "price",
+       caption = "Gapminder")
+ 
+
+graf_2 <- data_filter_price %>%
+  dplyr::filter(price == max(price)) %>% 
+  ggplot() +
+  geom_point(aes(x = release_date, y = price)) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(title = "Evolução dos preços dos jogos", 
+       subtitle = "Por data",
+       y = "Preço (em dolares)",
+       x = "Ano",
+       caption = "Gapminder")
+
+graf_3 <- data_filter_price %>%
+  ggplot() +
+  geom_histogram(aes(price)) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(title = "Quantidade de jogos por preço", 
+       subtitle = "Por preço (Price < 0.99)",
+       x = "Preço (em dolares)",
+       y = "Count games",
+       caption = "Gapminder")
+
+
+data_filter_game <- video_games %>% 
+  dplyr::select("game","metascore") %>%
+  janitor::clean_names() %>% 
+  tibble::as_tibble() %>% 
+  tidyr::drop_na() 
+
+graf_4 <- data_filter_game %>% 
+  ggplot() +
+  geom_histogram(aes(metascore)) +
+  theme(plot.title = element_text(hjust = 0.5)) +
+  labs(title = "Metascore", 
+       subtitle = "Por game",
+       x = "Metascore",
+       y = "Count games",
+       caption = "Gapminder")
+
+```
+
+#Análise 1 - Video Games
+```{r}
+ plotly::ggplotly(graf_1)
+```
+#Análise 2 - Video Games
+```{r}
+plotly::ggplotly(graf_2)
+```
+#Análise 3 - Video Games
+```{r}
+plotly::ggplotly(graf_3)
+```
+#Análise 4 - Video Games
+```{r}
+plotly::ggplotly(graf_4)
+```
+
